@@ -3,6 +3,11 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { logger } from "./utils/logger";
 import authController from "./auth/auth.controller";
+import profileController from "./profile/profile.controller";
+import { verifiedAccessToken } from "./auth/auth.middleware";
+import productCategoryController from "./product-category/product-category.controller";
+import productController from "./product/product.controller";
+import saleController from "./sale/sale.controller";
 
 dotenv.config();
 
@@ -17,6 +22,14 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authController);
+app.use("/api/profile", verifiedAccessToken, profileController);
+app.use(
+  "/api/product-categories",
+  verifiedAccessToken,
+  productCategoryController
+);
+app.use("/api/products", verifiedAccessToken, productController);
+app.use("/api/sales", verifiedAccessToken, saleController);
 
 app.listen(port, () => {
   logger.info(`Server is running on port ${port}`);
