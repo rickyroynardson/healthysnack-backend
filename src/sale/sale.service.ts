@@ -10,6 +10,9 @@ export const getSales = async () => {
         },
       },
     },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
 
   return sales;
@@ -17,6 +20,8 @@ export const getSales = async () => {
 
 export const createSale = async (data: CreateSaleType) => {
   return prisma.$transaction(async (tx) => {
+    let total = 0;
+
     for (let product of data.products) {
       const productStock = await prisma.product.findUnique({
         where: {
@@ -32,6 +37,8 @@ export const createSale = async (data: CreateSaleType) => {
         throw new Error("Product out of stock");
       }
 
+      total += productStock.price * product.quantity;
+
       await tx.product.update({
         where: {
           id: product.productId,
@@ -46,6 +53,7 @@ export const createSale = async (data: CreateSaleType) => {
 
     const sale = await tx.sale.create({
       data: {
+        total,
         ProductSale: {
           createMany: {
             data: data.products.map((product) => ({

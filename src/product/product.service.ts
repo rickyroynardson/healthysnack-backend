@@ -1,5 +1,10 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../db";
-import { CreateProductType, UpdateProductType } from "./product.type";
+import {
+  CreateProductType,
+  ManageProductStockType,
+  UpdateProductType,
+} from "./product.type";
 
 export const getProducts = async () => {
   const products = await prisma.product.findMany({
@@ -9,6 +14,60 @@ export const getProducts = async () => {
   });
 
   return products;
+};
+
+export const getBestSellingProducts = async (query: { date?: Date }) => {
+  const whereClause: Prisma.ProductSaleWhereInput = {};
+
+  if (query.date) {
+    whereClause.createdAt = {
+      gte: new Date(query.date),
+    };
+  } else {
+    whereClause.createdAt = {
+      gte: new Date(new Date().setHours(0, 0, 0, 0)),
+    };
+  }
+
+  const productSales = await prisma.productSale.groupBy({
+    by: ["productId"],
+    _sum: {
+      quantity: true,
+    },
+    orderBy: {
+      _sum: {
+        quantity: "desc",
+      },
+    },
+    // filter the date by today. notes: add choices date to filter
+    where: whereClause,
+    take: 5,
+  });
+
+  const products = await prisma.product.findMany({
+    where: {
+      id: {
+        in: productSales.map((productSale) => productSale.productId),
+      },
+    },
+  });
+
+  const productsWithTotalQuantitySold = products.map((product) => {
+    const productSale = productSales.find(
+      (productSale) => productSale.productId === product.id
+    );
+
+    return {
+      ...product,
+      totalQuantitySold: productSale?._sum.quantity || 0,
+    };
+  });
+
+  productsWithTotalQuantitySold.sort(
+    (a, b) => b.totalQuantitySold - a.totalQuantitySold
+  );
+
+  return productsWithTotalQuantitySold;
 };
 
 export const getProductById = async (id: number) => {
@@ -63,4 +122,46 @@ export const deleteProduct = async (id: number) => {
       id,
     },
   });
+};
+
+export const resetProductsStock = async () => {
+  await prisma.product.updateMany({
+    data: {
+      stock: 0,
+    },
+  });
+};
+
+export const manageProductStock = async (data: ManageProductStockType) => {
+  const product = await getProductById(data.id);
+
+  if (data.action === "increase") {
+    await prisma.product.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        stock: {
+          increment: data.quantity,
+        },
+      },
+    });
+  } else if (data.action === "decrease") {
+    if (product.stock < data.quantity) {
+      throw new Error("Not enough stock to decrease");
+    }
+
+    await prisma.product.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        stock: {
+          decrement: data.quantity,
+        },
+      },
+    });
+  } else {
+    throw new Error("Action not supported");
+  }
 };

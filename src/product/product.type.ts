@@ -10,3 +10,9 @@ export interface UpdateProductType {
   stock: number;
   productCategoryId: number;
 }
+
+export interface ManageProductStockType {
+  id: number;
+  quantity: number;
+  action: "increase" | "decrease";
+}

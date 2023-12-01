@@ -12,3 +12,9 @@ export const updateProductValidation = z.object({
   stock: z.number().min(0),
   productCategoryId: z.number(),
 });
+
+export const manageProductStockValidation = z.object({
+  id: z.number(),
+  quantity: z.number().min(1),
+  action: z.enum(["increase", "decrease"]),
+});

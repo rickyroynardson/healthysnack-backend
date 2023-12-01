@@ -8,6 +8,7 @@ import { verifiedAccessToken } from "./auth/auth.middleware";
 import productCategoryController from "./product-category/product-category.controller";
 import productController from "./product/product.controller";
 import saleController from "./sale/sale.controller";
+import userController from "./user/user.controller";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use(
 );
 app.use("/api/products", verifiedAccessToken, productController);
 app.use("/api/sales", verifiedAccessToken, saleController);
+app.use("/api/users", verifiedAccessToken, userController);
 
 app.listen(port, () => {
   logger.info(`Server is running on port ${port}`);

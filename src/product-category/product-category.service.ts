@@ -5,7 +5,15 @@ import {
 } from "./product-category.type";
 
 export const getProductCategories = async () => {
-  const productCategories = await prisma.productCategory.findMany();
+  const productCategories = await prisma.productCategory.findMany({
+    include: {
+      _count: {
+        select: {
+          Product: true,
+        },
+      },
+    },
+  });
 
   return productCategories;
 };

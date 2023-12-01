@@ -38,6 +38,7 @@ model Product {
 
 model Sale {
   id          Int           @id @default(autoincrement())
+  total       Int           @default(0)
   ProductSale ProductSale[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
