@@ -17,17 +17,16 @@ export const getProducts = async () => {
 };
 
 export const getBestSellingProducts = async (query: { date?: Date }) => {
-  const whereClause: Prisma.ProductSaleWhereInput = {};
+  const date = query.date ? new Date(query.date) : new Date();
+  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
 
-  if (query.date) {
-    whereClause.createdAt = {
-      gte: new Date(query.date),
-    };
-  } else {
-    whereClause.createdAt = {
-      gte: new Date(new Date().setHours(0, 0, 0, 0)),
-    };
-  }
+  const whereClause: Prisma.ProductSaleWhereInput = {
+    createdAt: {
+      gte: startOfDay,
+      lte: endOfDay,
+    },
+  };
 
   const productSales = await prisma.productSale.groupBy({
     by: ["productId"],

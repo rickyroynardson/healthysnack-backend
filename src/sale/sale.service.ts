@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../db";
 import { CreateSaleType } from "./sale.type";
 
@@ -16,6 +17,56 @@ export const getSales = async () => {
   });
 
   return sales;
+};
+
+export const getSalesProfit = async (query: { date?: Date }) => {
+  const date = query.date ? new Date(query.date) : new Date();
+  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+  const yesterday = new Date(date);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStart = new Date(yesterday.setHours(0, 0, 0, 0));
+  const yesterdayEnd = new Date(yesterday.setHours(23, 59, 59, 999));
+
+  const whereClause: Prisma.SaleWhereInput = {
+    createdAt: {
+      gte: startOfDay,
+      lte: endOfDay,
+    },
+  };
+
+  const yesterdayWhereClause: Prisma.SaleWhereInput = {
+    createdAt: {
+      gte: yesterdayStart,
+      lte: yesterdayEnd,
+    },
+  };
+
+  const salesProfit = await prisma.sale.aggregate({
+    _sum: {
+      total: true,
+    },
+    where: whereClause,
+  });
+
+  const yesterdaySalesProfit = await prisma.sale.aggregate({
+    _sum: {
+      total: true,
+    },
+    where: yesterdayWhereClause,
+  });
+
+  const todayProfit = salesProfit._sum.total ?? 0;
+  const yesterdayProfit = yesterdaySalesProfit._sum.total ?? 0;
+
+  return {
+    total: todayProfit,
+    yesterdayTotal: yesterdayProfit,
+    percentageChange: parseFloat(
+      (((todayProfit - yesterdayProfit) / yesterdayProfit) * 100).toFixed(2)
+    ),
+  };
 };
 
 export const createSale = async (data: CreateSaleType) => {
@@ -53,6 +104,9 @@ export const createSale = async (data: CreateSaleType) => {
 
     const sale = await tx.sale.create({
       data: {
+        invoiceNumber: `INV-${(Date.now() % 100000)
+          .toString()
+          .padStart(5, "0")}`,
         total,
         ProductSale: {
           createMany: {
