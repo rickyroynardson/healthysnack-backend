@@ -10,10 +10,25 @@ export const getProducts = async () => {
   const products = await prisma.product.findMany({
     include: {
       productCategory: true,
+      ProductMaterial: {
+        select: {
+          id: true,
+          name: true,
+          quantity: true,
+          unit: true,
+          price: true,
+        },
+      },
     },
   });
 
-  return products;
+  return products.map((product) => ({
+    ...product,
+    capital: product.ProductMaterial.reduce(
+      (total, material) => total + material.price,
+      0
+    ),
+  }));
 };
 
 export const getBestSellingProducts = async (query: { date?: Date }) => {
@@ -89,6 +104,16 @@ export const createProduct = async (data: CreateProductType) => {
       name: data.name,
       price: data.price,
       productCategoryId: data.productCategoryId,
+      ProductMaterial: {
+        createMany: {
+          data: data.materials.map((material) => ({
+            name: material.name,
+            quantity: material.quantity,
+            unit: material.unit,
+            price: material.price,
+          })),
+        },
+      },
     },
   });
 
@@ -98,19 +123,54 @@ export const createProduct = async (data: CreateProductType) => {
 export const updateProduct = async (id: number, data: UpdateProductType) => {
   await getProductById(id);
 
-  const product = await prisma.product.update({
-    where: {
-      id,
-    },
-    data: {
-      name: data.name,
-      price: data.price,
-      stock: data.stock,
-      productCategoryId: data.productCategoryId,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    const materialsToCreate = data.materials.filter(
+      (material) => !material.materialId
+    );
+    const materialsToUpdate = data.materials.filter(
+      (material) => material.materialId
+    );
 
-  return product;
+    const product = await tx.product.update({
+      where: { id },
+      data: {
+        name: data.name,
+        price: data.price,
+        stock: data.stock,
+        productCategoryId: data.productCategoryId,
+        ProductMaterial: {
+          deleteMany: {
+            id: {
+              notIn: data.materials
+                .map((material) => material.materialId)
+                .filter((id): id is number => id !== undefined),
+            },
+          },
+          createMany: {
+            data: materialsToCreate.map((material) => ({
+              name: material.name,
+              quantity: material.quantity,
+              unit: material.unit,
+              price: material.price,
+            })),
+          },
+          updateMany: materialsToUpdate.map((material) => ({
+            where: {
+              id: material.materialId,
+            },
+            data: {
+              name: material.name,
+              quantity: material.quantity,
+              unit: material.unit,
+              price: material.price,
+            },
+          })),
+        },
+      },
+    });
+
+    return product;
+  });
 };
 
 export const deleteProduct = async (id: number) => {
