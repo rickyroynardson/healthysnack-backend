@@ -25,15 +25,26 @@ model ProductCategory {
 }
 
 model Product {
-  id                Int             @id @default(autoincrement())
+  id                Int               @id @default(autoincrement())
   name              String
-  price             Int             @default(0)
-  stock             Int             @default(0)
+  price             Int               @default(0)
+  stock             Int               @default(0)
   productCategoryId Int
-  productCategory   ProductCategory @relation(fields: [productCategoryId], references: [id], onUpdate: Cascade, onDelete: Cascade)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  productCategory   ProductCategory   @relation(fields: [productCategoryId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   ProductSale       ProductSale[]
+  ProductMaterial   ProductMaterial[]
+}
+
+model ProductMaterial {
+  id        Int     @id @default(autoincrement())
+  name      String
+  quantity  Int     @default(0)
+  unit      String
+  price     Int     @default(0)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onUpdate: Cascade, onDelete: Cascade)
 }
 
 model Sale {
