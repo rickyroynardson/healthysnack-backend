@@ -1,5 +1,10 @@
 import { Request, Response, Router } from "express";
-import { createSale, getSales, getSalesProfit } from "./sale.service";
+import {
+  createSale,
+  getSales,
+  getSalesProfit,
+  getSalesTotal,
+} from "./sale.service";
 import { createSaleValidation } from "./sale.validation";
 import { fromZodError } from "zod-validation-error";
 
@@ -9,6 +14,17 @@ saleController.get("/", async (req: Request, res: Response) => {
   try {
     const sales = await getSales();
     res.status(200).json({ message: "Showing sales", data: sales });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+saleController.get("/total", async (req: Request, res: Response) => {
+  try {
+    const salesTotal = await getSalesTotal(req.query);
+    res.status(200).json({ message: "Showing sales total", data: salesTotal });
   } catch (error) {
     if (error instanceof Error) {
       res.status(400).json({ message: error.message });

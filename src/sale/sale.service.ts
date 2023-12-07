@@ -19,6 +19,56 @@ export const getSales = async () => {
   return sales;
 };
 
+export const getSalesTotal = async (query: { date?: Date }) => {
+  const date = query.date ? new Date(query.date) : new Date();
+  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+  const yesterday = new Date(date);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStart = new Date(yesterday.setHours(0, 0, 0, 0));
+  const yesterdayEnd = new Date(yesterday.setHours(23, 59, 59, 999));
+
+  const whereClause: Prisma.SaleWhereInput = {
+    createdAt: {
+      gte: startOfDay,
+      lte: endOfDay,
+    },
+  };
+
+  const yesterdayWhereClause: Prisma.SaleWhereInput = {
+    createdAt: {
+      gte: yesterdayStart,
+      lte: yesterdayEnd,
+    },
+  };
+
+  const salesTotal = await prisma.sale.aggregate({
+    _sum: {
+      total: true,
+    },
+    where: whereClause,
+  });
+
+  const yesterdaySalesTotal = await prisma.sale.aggregate({
+    _sum: {
+      total: true,
+    },
+    where: yesterdayWhereClause,
+  });
+
+  const todayTotal = salesTotal._sum.total ?? 0;
+  const yesterdayTotal = yesterdaySalesTotal._sum.total ?? 0;
+
+  return {
+    total: todayTotal,
+    yesterdayTotal: yesterdayTotal,
+    percentageChange: parseFloat(
+      (((todayTotal - yesterdayTotal) / yesterdayTotal) * 100).toFixed(2)
+    ),
+  };
+};
+
 export const getSalesProfit = async (query: { date?: Date }) => {
   const date = query.date ? new Date(query.date) : new Date();
   const startOfDay = new Date(date.setHours(0, 0, 0, 0));
@@ -43,26 +93,76 @@ export const getSalesProfit = async (query: { date?: Date }) => {
     },
   };
 
-  const salesProfit = await prisma.sale.aggregate({
-    _sum: {
-      total: true,
-    },
+  const todaySales = await prisma.sale.findMany({
     where: whereClause,
-  });
-
-  const yesterdaySalesProfit = await prisma.sale.aggregate({
-    _sum: {
-      total: true,
+    include: {
+      ProductSale: {
+        include: {
+          product: {
+            include: {
+              ProductMaterial: true,
+            },
+          },
+        },
+      },
     },
-    where: yesterdayWhereClause,
   });
 
-  const todayProfit = salesProfit._sum.total ?? 0;
-  const yesterdayProfit = yesterdaySalesProfit._sum.total ?? 0;
+  const yesterdaySales = await prisma.sale.findMany({
+    where: yesterdayWhereClause,
+    include: {
+      ProductSale: {
+        include: {
+          product: {
+            include: {
+              ProductMaterial: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const todaySalesWithCapital = todaySales.map((todaySale) => {
+    let totalCapital = 0;
+
+    for (const product of todaySale.ProductSale) {
+      const productCapital = product.product.ProductMaterial.reduce(
+        (total, material) => total + material.price,
+        0
+      );
+      totalCapital += productCapital * product.quantity;
+    }
+
+    return { ...todaySale, totalCapital };
+  });
+
+  const yesterdaySalesWithCapital = yesterdaySales.map((yesterdaySale) => {
+    let totalCapital = 0;
+
+    for (const product of yesterdaySale.ProductSale) {
+      const productCapital = product.product.ProductMaterial.reduce(
+        (total, material) => total + material.price,
+        0
+      );
+      totalCapital += productCapital * product.quantity;
+    }
+
+    return { ...yesterdaySale, totalCapital };
+  });
+
+  const todayProfit = todaySalesWithCapital.reduce(
+    (total, sale) => total + sale.total - sale.totalCapital,
+    0
+  );
+  const yesterdayProfit = yesterdaySalesWithCapital.reduce(
+    (total, sale) => total + sale.total - sale.totalCapital,
+    0
+  );
 
   return {
-    total: todayProfit,
-    yesterdayTotal: yesterdayProfit,
+    todayProfit,
+    yesterdayProfit,
     percentageChange: parseFloat(
       (((todayProfit - yesterdayProfit) / yesterdayProfit) * 100).toFixed(2)
     ),
