@@ -37,6 +37,21 @@ model Product {
   ProductMaterial   ProductMaterial[]
 }
 
+enum ProductLogType {
+  INCREASE
+  DECREASE
+  UPDATE
+  RESET
+  SOLD
+}
+
+model ProductLog {
+  id          Int            @id @default(autoincrement())
+  description String
+  type        ProductLogType
+  createdAt   DateTime       @default(now())
+}
+
 model ProductMaterial {
   id        Int     @id @default(autoincrement())
   name      String

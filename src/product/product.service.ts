@@ -6,7 +6,47 @@ import {
   UpdateProductType,
 } from "./product.type";
 
-export const getProducts = async () => {
+export const getProducts = async (query: { limit?: number; page?: number }) => {
+  const limit = Number(query.limit) || 10;
+  const page = Number(query.page) || 1;
+  const offset = (page - 1) * limit;
+
+  const products = await prisma.product.findMany({
+    include: {
+      productCategory: true,
+      ProductMaterial: {
+        select: {
+          id: true,
+          name: true,
+          quantity: true,
+          unit: true,
+          price: true,
+        },
+      },
+    },
+    take: limit,
+    skip: offset,
+  });
+  const productsCount = await prisma.product.count();
+
+  return {
+    data: products.map((product) => ({
+      ...product,
+      capital: product.ProductMaterial.reduce(
+        (total, material) => total + material.price,
+        0
+      ),
+    })),
+    meta: {
+      page,
+      total: productsCount,
+      perPage: limit,
+      hasNext: productsCount - page * limit > 0,
+    },
+  };
+};
+
+export const getAllProducts = async () => {
   const products = await prisma.product.findMany({
     include: {
       productCategory: true,
@@ -29,6 +69,16 @@ export const getProducts = async () => {
       0
     ),
   }));
+};
+
+export const getProductLogs = async () => {
+  const productLogs = await prisma.productLog.findMany({
+    orderBy: {
+      id: "desc",
+    },
+  });
+
+  return productLogs;
 };
 
 export const getBestSellingProducts = async (query: { date?: Date }) => {
@@ -121,7 +171,7 @@ export const createProduct = async (data: CreateProductType) => {
 };
 
 export const updateProduct = async (id: number, data: UpdateProductType) => {
-  await getProductById(id);
+  const oldProduct = await getProductById(id);
 
   return prisma.$transaction(async (tx) => {
     const materialsToCreate = data.materials.filter(
@@ -168,6 +218,14 @@ export const updateProduct = async (id: number, data: UpdateProductType) => {
         },
       },
     });
+    if (oldProduct.stock !== data.stock) {
+      await tx.productLog.create({
+        data: {
+          description: `Product ${product.name} stock update from ${oldProduct.stock} to ${product.stock}`,
+          type: "UPDATE",
+        },
+      });
+    }
 
     return product;
   });
@@ -189,6 +247,12 @@ export const resetProductsStock = async () => {
       stock: 0,
     },
   });
+  await prisma.productLog.create({
+    data: {
+      description: "All product stock reset to 0",
+      type: "RESET",
+    },
+  });
 };
 
 export const manageProductStock = async (data: ManageProductStockType) => {
@@ -205,6 +269,12 @@ export const manageProductStock = async (data: ManageProductStockType) => {
         },
       },
     });
+    await prisma.productLog.create({
+      data: {
+        description: `Product ${product.name} stock increase by ${data.quantity}`,
+        type: "INCREASE",
+      },
+    });
   } else if (data.action === "decrease") {
     if (product.stock < data.quantity) {
       throw new Error("Not enough stock to decrease");
@@ -218,6 +288,12 @@ export const manageProductStock = async (data: ManageProductStockType) => {
         stock: {
           decrement: data.quantity,
         },
+      },
+    });
+    await prisma.productLog.create({
+      data: {
+        description: `Product ${product.name} stock decrease by ${data.quantity}`,
+        type: "DECREASE",
       },
     });
   } else {
