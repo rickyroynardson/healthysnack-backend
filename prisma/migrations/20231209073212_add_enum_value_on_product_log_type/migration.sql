@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `ProductLog` MODIFY `type` ENUM('INCREASE', 'DECREASE', 'UPDATE', 'RESET', 'SOLD') NOT NULL;

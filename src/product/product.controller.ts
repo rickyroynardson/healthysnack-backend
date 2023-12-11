@@ -2,7 +2,9 @@ import { Request, Response, Router } from "express";
 import {
   createProduct,
   deleteProduct,
+  getAllProducts,
   getBestSellingProducts,
+  getProductLogs,
   getProducts,
   manageProductStock,
   resetProductsStock,
@@ -19,8 +21,33 @@ const productController: Router = Router();
 
 productController.get("/", async (req: Request, res: Response) => {
   try {
-    const products = await getProducts();
+    const products = await getProducts(req.query);
     res.status(200).json({ message: "Showing products", data: products });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+productController.get("/all", async (req: Request, res: Response) => {
+  try {
+    const products = await getAllProducts();
+    res.status(200).json({ message: "Showing all products", data: products });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+productController.get("/log", async (req: Request, res: Response) => {
+  try {
+    const productLogs = await getProductLogs();
+    res.status(200).json({
+      message: "Showing product log",
+      data: productLogs,
+    });
   } catch (error) {
     if (error instanceof Error) {
       res.status(400).json({ message: error.message });

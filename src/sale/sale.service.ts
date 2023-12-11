@@ -200,6 +200,12 @@ export const createSale = async (data: CreateSaleType) => {
           },
         },
       });
+      await prisma.productLog.create({
+        data: {
+          description: `Product ${productStock.name} sold ${product.quantity}`,
+          type: "SOLD",
+        },
+      });
     }
 
     const sale = await tx.sale.create({
