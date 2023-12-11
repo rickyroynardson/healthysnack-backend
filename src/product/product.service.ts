@@ -6,10 +6,22 @@ import {
   UpdateProductType,
 } from "./product.type";
 
-export const getProducts = async (query: { limit?: number; page?: number }) => {
+export const getProducts = async (query: {
+  limit?: number;
+  page?: number;
+  name?: string;
+}) => {
   const limit = Number(query.limit) || 10;
   const page = Number(query.page) || 1;
   const offset = (page - 1) * limit;
+
+  const whereClause: Prisma.ProductWhereInput = {};
+
+  if (query.name) {
+    whereClause.name = {
+      contains: query.name,
+    };
+  }
 
   const products = await prisma.product.findMany({
     include: {
@@ -24,10 +36,13 @@ export const getProducts = async (query: { limit?: number; page?: number }) => {
         },
       },
     },
+    where: whereClause,
     take: limit,
     skip: offset,
   });
-  const productsCount = await prisma.product.count();
+  const productsCount = await prisma.product.count({
+    where: whereClause,
+  });
 
   return {
     data: products.map((product) => ({
