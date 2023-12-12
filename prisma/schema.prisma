@@ -75,6 +75,9 @@ model ProductMaterial {
 model Purchase {
   id                Int                 @id @default(autoincrement())
   invoiceNumber     String              @unique
+  vendor            String
+  orderDate         DateTime
+  memo              String
   total             Int                 @default(0)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
