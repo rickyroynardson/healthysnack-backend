@@ -2,6 +2,7 @@ import { Request, Response, Router } from "express";
 import {
   createInventory,
   deleteInventory,
+  getAllInventories,
   getInventories,
   updateInventory,
 } from "./inventory.service";
@@ -17,6 +18,17 @@ inventoryController.get("/", async (req: Request, res: Response) => {
   try {
     const inventories = await getInventories(req.query);
     res.status(200).json({ message: "Showing inventory", ...inventories });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
+
+inventoryController.get("/all", async (req: Request, res: Response) => {
+  try {
+    const inventories = await getAllInventories();
+    res.status(200).json({ message: "Showing inventory", data: inventories });
   } catch (error) {
     if (error instanceof Error) {
       res.status(400).json({ message: error.message });

@@ -39,6 +39,12 @@ export const getInventories = async (query: {
   };
 };
 
+export const getAllInventories = async () => {
+  const inventories = await prisma.inventory.findMany();
+
+  return inventories;
+};
+
 export const getInventoryById = async (id: number) => {
   const inventory = await prisma.inventory.findUnique({
     where: {
