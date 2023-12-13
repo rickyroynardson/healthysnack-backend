@@ -1,9 +1,20 @@
 import { Request, Response, Router } from "express";
 import { createPurchaseValidation } from "./purchase.validation";
 import { fromZodError } from "zod-validation-error";
-import { createPurchase } from "./purchase.service";
+import { createPurchase, getPurchases } from "./purchase.service";
 
 const purchaseController: Router = Router();
+
+purchaseController.get("/", async (req: Request, res: Response) => {
+  try {
+    const purchases = await getPurchases(req.query);
+    res.status(200).json({ message: "Showing all purchases", ...purchases });
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+});
 
 purchaseController.post("/", async (req: Request, res: Response) => {
   const result = await createPurchaseValidation.safeParseAsync(req.body);

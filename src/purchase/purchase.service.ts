@@ -1,5 +1,46 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../db";
 import { CreatePurchaseType } from "./purchase.type";
+
+export const getPurchases = async (query: {
+  limit?: number;
+  page?: number;
+}) => {
+  const limit = Number(query.limit) || 10;
+  const page = Number(query.page) || 1;
+  const offset = (page - 1) * limit;
+
+  const whereClause: Prisma.PurchaseWhereInput = {};
+
+  const purchases = await prisma.purchase.findMany({
+    include: {
+      InventoryPurchase: {
+        include: {
+          inventory: true,
+        },
+      },
+    },
+    orderBy: {
+      orderDate: "desc",
+    },
+    where: whereClause,
+    take: limit,
+    skip: offset,
+  });
+  const purchasesCount = await prisma.purchase.count({
+    where: whereClause,
+  });
+
+  return {
+    data: purchases,
+    meta: {
+      page,
+      total: purchasesCount,
+      perPage: limit,
+      hasNext: purchasesCount - page * limit > 0,
+    },
+  };
+};
 
 export const createPurchase = async (data: CreatePurchaseType) => {
   return prisma.$transaction(async (tx) => {
@@ -35,6 +76,7 @@ export const createPurchase = async (data: CreatePurchaseType) => {
         invoiceNumber: data.invoiceNumber,
         vendor: data.vendor,
         orderDate: new Date(data.orderDate),
+        total,
         memo: data.memo,
         InventoryPurchase: {
           createMany: {
