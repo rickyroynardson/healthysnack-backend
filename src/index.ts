@@ -9,6 +9,8 @@ import productCategoryController from "./product-category/product-category.contr
 import productController from "./product/product.controller";
 import saleController from "./sale/sale.controller";
 import userController from "./user/user.controller";
+import inventoryController from "./inventory/inventory.controller";
+import purchaseController from "./purchase/purchase.controller";
 
 dotenv.config();
 
@@ -30,8 +32,10 @@ app.use(
   productCategoryController
 );
 app.use("/api/products", verifiedAccessToken, productController);
+app.use("/api/inventories", verifiedAccessToken, inventoryController);
 app.use("/api/sales", verifiedAccessToken, saleController);
 app.use("/api/users", verifiedAccessToken, userController);
+app.use("/api/purchases", verifiedAccessToken, purchaseController);
 
 app.listen(port, () => {
   logger.info(`Server is running on port ${port}`);
