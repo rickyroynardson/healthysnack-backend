@@ -10,3 +10,10 @@ export const updateInventoryValidation = z.object({
   stock: z.number().min(0),
   unit: z.string().min(1),
 });
+
+export const manageInventoryStockValidation = z.object({
+  id: z.number(),
+  quantity: z.number().min(1),
+  memo: z.string(),
+  action: z.enum(["increase", "decrease"]),
+});

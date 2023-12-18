@@ -8,3 +8,10 @@ export interface UpdateInventoryType {
   stock: number;
   unit: string;
 }
+
+export interface ManageInventoryStockType {
+  id: number;
+  quantity: number;
+  memo: string;
+  action: "increase" | "decrease";
+}

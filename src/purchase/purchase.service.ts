@@ -69,6 +69,13 @@ export const createPurchase = async (data: CreatePurchaseType) => {
           },
         },
       });
+      await tx.inventoryLog.create({
+        data: {
+          description: `Inventory ${inventoryStock.name} stock increased by ${inventory.quantity} ${inventoryStock.unit} due to purchase #${data.invoiceNumber}`,
+          memo: data.memo,
+          type: "PURCHASE",
+        },
+      });
     }
 
     const purchase = await tx.purchase.create({

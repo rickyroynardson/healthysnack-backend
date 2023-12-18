@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../db";
-import { CreateInventoryType, UpdateInventoryType } from "./inventory.type";
+import {
+  CreateInventoryType,
+  ManageInventoryStockType,
+  UpdateInventoryType,
+} from "./inventory.type";
 
 export const getInventories = async (query: {
   limit?: number;
@@ -59,6 +63,16 @@ export const getInventoryById = async (id: number) => {
   return inventory;
 };
 
+export const getInventoryLogs = async () => {
+  const inventoryLogs = await prisma.inventoryLog.findMany({
+    orderBy: {
+      id: "desc",
+    },
+  });
+
+  return inventoryLogs;
+};
+
 export const createInventory = async (data: CreateInventoryType) => {
   const inventory = await prisma.inventory.create({
     data: {
@@ -74,7 +88,7 @@ export const updateInventory = async (
   id: number,
   data: UpdateInventoryType
 ) => {
-  await getInventoryById(id);
+  const oldInventory = await getInventoryById(id);
 
   const inventory = await prisma.inventory.update({
     where: {
@@ -86,8 +100,64 @@ export const updateInventory = async (
       unit: data.unit,
     },
   });
+  if (oldInventory.stock !== data.stock) {
+    await prisma.inventoryLog.create({
+      data: {
+        description: `Inventory ${inventory.name} stock update from ${oldInventory.stock} to ${inventory.stock}`,
+        type: "UPDATE",
+      },
+    });
+  }
 
   return inventory;
+};
+
+export const manageInventoryStock = async (data: ManageInventoryStockType) => {
+  const inventory = await getInventoryById(data.id);
+
+  if (data.action === "increase") {
+    await prisma.inventory.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        stock: {
+          increment: data.quantity,
+        },
+      },
+    });
+    await prisma.inventoryLog.create({
+      data: {
+        description: `Inventory ${inventory.name} stock increase by ${data.quantity}`,
+        memo: data.memo,
+        type: "INCREASE",
+      },
+    });
+  } else if (data.action === "decrease") {
+    if (inventory.stock < data.quantity) {
+      throw new Error("Not enough stock to decrease");
+    }
+
+    await prisma.inventory.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        stock: {
+          decrement: data.quantity,
+        },
+      },
+    });
+    await prisma.inventoryLog.create({
+      data: {
+        description: `Inventory ${inventory.name} stock decrease by ${data.quantity}`,
+        memo: data.memo,
+        type: "DECREASE",
+      },
+    });
+  } else {
+    throw new Error("Action not supported");
+  }
 };
 
 export const deleteInventory = async (id: number) => {

@@ -62,6 +62,21 @@ model ProductLog {
   createdAt   DateTime       @default(now())
 }
 
+enum InventoryLogType {
+  INCREASE
+  DECREASE
+  UPDATE
+  PURCHASE
+}
+
+model InventoryLog {
+  id          Int              @id @default(autoincrement())
+  description String
+  memo        String?
+  type        InventoryLogType
+  createdAt   DateTime         @default(now())
+}
+
 model ProductMaterial {
   id        Int     @id @default(autoincrement())
   name      String
